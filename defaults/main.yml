@@ -1,0 +1,7 @@
+---
+awx_web_docker_image: "ansible/awx_web:latest"
+awx_task_docker_image: "ansible/awx_task:latest"
+memcached_docker_image: "memcached:alpine"
+rabbitmq_docker_image: "rabbitmq:3"
+postgresql_docker_image: "postgres:9.6"
+awx_host: "awx.integr8.me"

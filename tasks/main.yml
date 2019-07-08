@@ -1,0 +1,68 @@
+---
+- name: Install python virtualenv
+  package:
+    name: python-virtualenv
+    state: present
+  when: "inventory_hostname == groups['swarm_manager'][0]"
+
+- name: Create temporary directory to store related files
+  tempfile:
+    state: directory
+    suffix: "awx_venv"
+  register: "awx_venv"
+  when: "inventory_hostname == groups['swarm_manager'][0]"
+
+- name: Install pyyaml inside of virtualenv
+  pip:
+    name: pyyaml
+    version: 5.1.1
+    virtualenv: "{{ awx_venv.path }}"
+  when: "inventory_hostname == groups['swarm_manager'][0]"
+
+- name: Install jsondiff inside of virtualenv
+  pip:
+    name: jsondiff
+    version: 1.1.2
+    virtualenv: "{{ awx_venv.path }}"
+  when: "inventory_hostname == groups['swarm_manager'][0]"
+
+- name: Create temporary directory to store related files
+  tempfile:
+    state: directory
+    suffix: awx
+  register: awx_temp_dir
+  when: "inventory_hostname == groups['swarm_manager'][0]"
+
+- name: Interpolate Ansible variables
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ awx_temp_dir.path }}/docker-compose.yml"
+  when: "inventory_hostname == groups['swarm_manager'][0]"
+
+- name: Copy AWX secret
+  copy:
+    content: "aabbcc"
+    dest: "{{ awx_temp_dir.path }}/SECRET_KEY"
+  when: "inventory_hostname == groups['swarm_manager'][0]"
+
+- name: Deploy services in Swarm
+  docker_stack:
+    state: present
+    name: awx
+    prune: yes
+    compose:
+      - "{{ awx_temp_dir.path }}/docker-compose.yml"
+  tags:
+    - deploy-stack
+  when: "inventory_hostname == groups['swarm_manager'][0]"
+  vars:
+    ansible_python_interpreter: "{{ awx_venv.path }}/bin/python"
+
+- name: Remove temporary directories
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - "{{ awx_venv.path }}"
+    - "{{ awx_temp_dir.path }}"
+  when: "inventory_hostname == groups['swarm_manager'][0]"
